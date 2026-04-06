@@ -1,3 +1,8 @@
-aiogram
-yookassa
-python-dotenv
+aiogram~=3.27.0
+yookassa~=3.10.0
+python-dotenv~=1.2.2
+psycopg[binary,pool]
+pydantic==2.12.5
+pydantic_core==2.41.5
+psycopg-pool~=3.3.0
+aiohttp-socks

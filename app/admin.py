@@ -1,47 +1,65 @@
-from app import keyboard, SQlite, text
+# app/admin.py
 from aiogram.utils.markdown import hbold
+from app import keyboard, text as text_module
+from pgsql.database import all_users, user_info
 
-# Отклик на команду /admin
-def admin_panel(name):
+
+def admin_panel(name: str):
     txt = f"{name} добро пожаловать в админ панель!\nВыберите интересующие вас пункты:"
-    reply_markup = keyboard.admin_panel.as_markup()
-    return txt, reply_markup
+    return txt, keyboard.admin_panel.as_markup()
 
-# БД для админа
-def db_into_message():
-    db = SQlite.all_telegram_id()
-    message = "id | telegram_id | username | money \n"
+
+async def db_into_message(pool) -> str:
+    """Выводит краткую таблицу пользователей для админа."""
+    db = await all_users(pool)
+    lines = ["<pre>id | telegram_id | username | money</pre>"]
     for user in db:
-        x=0
-        while x!=4:
-            message += f" {str(user[x])} |"
-            x+=1
-        message += "\n"
-    return message
+        lines.append(
+            f"{user.get('id')} | {user.get('telegram_id')} | "
+            f"{user.get('username')} | {user.get('money')}"
+        )
+    return "\n".join(lines)
 
-def pay_succsses(id, first_name, username):
-    user_info_db = SQlite.user_info(id)
-    if username == None: username = "Неизвестно"
-    txt = text.text(user_info_db[9], "Оплата прошла успешно:\n")
-    if user_info_db[11] == "dis": txt += f"\n\nОплата в размере {hbold(str(user_info_db[10]))} руб. прошла успешна (за счет промокода OBLAKA -20%)"
-    elif user_info_db[11] == "ref": txt += f"\n\nОплата в размере {hbold(str(user_info_db[10]))} руб. прошла успешна (за счет реферальной ссылки -10%)"
-    elif user_info_db[11] == "no": txt += f"\n\nОплата в размере {hbold(str(user_info_db[10]))} руб. прошла успешна"
-    else: txt += f"\n\nПРОИЗОШЛА КАКАЯ-ТО ОШИБКА"
-    txt += f"\n\nИмя пользователя: {hbold(first_name)}\nusername пользователя: {hbold(username)}\nid пользователя: {hbold(str(id))}"
-    txt += f"\n\nЧто-бы ответить пользователю через бот, напишите в чат \"sendto [id] [message]\" (sendto 123456789 Hello user) или напишите лично @{username}"
-    if username == "Неизвестно": txt += "\n\nПользователь скрыл свои данные. Обратная связь возможна только через бота \"sendto [id] [message]\""
+
+async def pay_succsses(telegram_id: int, first_name: str, username: str | None, pool) -> str:
+    user = await user_info(telegram_id, pool)
+    if not user:
+        return "Ошибка: пользователь не найден"
+
+    if username is None:
+        username = "Неизвестно"
+
+    server = user.get("server", "no")
+    price = user.get("price", 0)
+    use_discount = user.get("use_discount", "no")
+
+    txt = text_module.text(server, "Оплата прошла успешно:\n")
+
+    if use_discount == "dis":
+        txt += f"\n\nОплата в размере {hbold(str(price))} руб. прошла успешно (за счёт промокода OBLAKA -20%)"
+    elif use_discount == "ref":
+        txt += f"\n\nОплата в размере {hbold(str(price))} руб. прошла успешно (за счёт реферальной ссылки -10%)"
+    elif use_discount == "no":
+        txt += f"\n\nОплата в размере {hbold(str(price))} руб. прошла успешно"
+    else:
+        txt += "\n\nПРОИЗОШЛА КАКАЯ-ТО ОШИБКА"
+
+    txt += (
+        f"\n\nИмя пользователя: {hbold(first_name)}"
+        f"\nusername пользователя: {hbold(username)}"
+        f"\nid пользователя: {hbold(str(telegram_id))}"
+        f'\n\nЧтобы ответить пользователю через бот: "sendto {telegram_id} [сообщение]"'
+    )
+
+    if username == "Неизвестно":
+        txt += "\n\nПользователь скрыл свои данные. Обратная связь только через бота."
+
     return txt
 
-def text_to_user(txt):
-    txt = txt.split(' ')
-    text = f"Сообщение пользователю {str(txt[1])} успешно отправлено!"
-    user_id = int(txt[1])
-    text_to_user_ = ""
-    for word in txt:
-        if word == txt[0] or word == txt[1]: text_to_user_ = ""
-        else: text_to_user_ += word + " "
-    return text, user_id, text_to_user_
 
-
-
-
+def text_to_user(txt: str):
+    parts = txt.split(" ", 2)
+    user_id = int(parts[1])
+    message_text = parts[2] if len(parts) > 2 else ""
+    reply = f"Сообщение пользователю {user_id} успешно отправлено!"
+    return reply, user_id, message_text

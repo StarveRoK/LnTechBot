@@ -1,3 +1,4 @@
+# keyboard.py
 from app import description
 
 from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder

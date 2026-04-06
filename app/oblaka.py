@@ -1,14 +1,23 @@
-from app import SQlite, description
+# app/oblaka.py
+from app import description
+from pgsql.database import add_new_user, user_info, add_discount_oblaka
 
-#Выполняется при ввода слова OBLAKA пользователем
-#Проверка зарегистрирован ли пользователь
-# Проверка на наличие купона OBLAKA в БД. При наличии - начисление скидки (20%) и удаление купона
-def oblaka(id, name):
-    SQlite.add_new_user(id, name)
-    user_info = SQlite.user_info(id)
-    if int(user_info[4]) == 1: #Проверка в БД на наличие купона
-        SQlite.add_discount_oblaka(id)
-        txt = description.activate_coupon_string
-    elif int(user_info[4]) == 0: txt = description.user_have_no_coupon
-    else: txt = description.error
-    return txt
+
+async def oblaka(telegram_id: int, name: str, pool) -> str:
+    """
+    Обрабатывает ввод слова OBLAKA.
+    Регистрирует пользователя если нужно, проверяет наличие купона и начисляет скидку.
+    """
+    await add_new_user(telegram_id, name, pool)
+    user = await user_info(telegram_id, pool)
+
+    if not user:
+        return description.error
+
+    if int(user["oblaka"]) == 1:
+        await add_discount_oblaka(telegram_id, pool)
+        return description.activate_coupon_string
+    elif int(user["oblaka"]) == 0:
+        return description.user_have_no_coupon
+    else:
+        return description.error

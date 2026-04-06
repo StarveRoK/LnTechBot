@@ -1,63 +1,71 @@
+# app/pay.py
 import os
-
-import yookassa
-
-from app import referal, SQlite, keyboard, description, admin
-from dotenv import load_dotenv
 import math
 import uuid
+
+import yookassa
 from yookassa import Configuration, Payment
+from dotenv import load_dotenv
+
+from app import keyboard, description
+from app import referal as referal_module
+from pgsql.database import user_info, del_information_about_server
 
 load_dotenv()
 
-Configuration.account_id = os.getenv('YOUKASSA_ACCOUNT_ID')
+Configuration.account_id = os.getenv("YOUKASSA_ACCOUNT_ID")
 Configuration.secret_key = os.getenv("YOUKASSA_SECRET_KEY")
 
 
-# Создание ссылки на оплату
-def pay(amount, description_):
-    amount = int(math.floor(amount))  # Сумма денег
-
+def create_payment(amount: float, description_: str):
+    """Создаёт ссылку на оплату через ЮKassa. Возвращает (pay_id, url)."""
+    amount = int(math.floor(amount))
     idempotence_key = str(uuid.uuid4())
-
-    payment = Payment.create({
-        "amount": {
-            "value": str(amount),
-            "currency": "RUB"
+    payment = Payment.create(
+        {
+            "amount": {"value": str(amount), "currency": "RUB"},
+            "confirmation": {"type": "redirect", "return_url": "https://oblaka.tech/"},
+            "capture": True,
+            "description": description_,
         },
-        "confirmation": {
-            "type": "redirect",
-            "return_url": "https://oblaka.tech/"
-        },
-        "capture": True,
-        "description": description_
-    }, idempotence_key)
-
+        idempotence_key,
+    )
     return payment.id, payment.confirmation.confirmation_url
 
 
-# Проверка оплаты (ожидание, отмена, подтверждение)
-def check_pay(id_, first_name, username):
+async def check_pay(telegram_id: int, first_name: str, username: str, pool):
+    """
+    Проверяет статус оплаты.
+    Возвращает (text, reply_markup, is_pay, text_to_admin).
+    """
     is_pay = False
     try:
-        user_info_db = SQlite.user_info(id_)
-        id_pay = user_info_db[14]
-        answer = yookassa.Payment.find_one(id_pay).status
+        user = await user_info(telegram_id, pool)
+        if not user:
+            return description.error, keyboard.back_to_my_profile.as_markup(), is_pay, "no"
+
+        pay_id = user.get("pay_id", "0")
+        answer = yookassa.Payment.find_one(pay_id).status
+
         if answer == "succeeded":
             is_pay = True
-            txt = description.pay_sucsses
-            txt_to_admin = admin.pay_succsses(id_, first_name, username)
-            referal.check_referal_discount(id_, True)
-            SQlite.del_information_about_server(id_, True)
-            return txt, keyboard.back_to_my_profile.as_markup(), is_pay, txt_to_admin
-            # '''ТУТ ДОЛЖЕН БЫТЬ КОД С ОТПРАВКОЙ ЛОГИНА И ПАРОЛЯ'''
+            await referal_module.check_referal_discount(telegram_id, True, pool)
+            await del_information_about_server(telegram_id, True, pool)
 
-        elif answer == "pending" or answer == "waiting_for_capture":
-            return "⏳Ожидается оплата...⏳", keyboard.buy_from_p2pkassa(user_info_db[15]), is_pay, "no"
+            # Импорт здесь чтобы избежать цикличности
+            from app.admin import pay_succsses
+            text_to_admin = await pay_succsses(telegram_id, first_name, username, pool)
+            return description.pay_sucsses, keyboard.back_to_my_profile.as_markup(), is_pay, text_to_admin
+
+        elif answer in ("pending", "waiting_for_capture"):
+            return "⏳Ожидается оплата...⏳", keyboard.buy_from_p2pkassa(user.get("url_pay", "")), is_pay, "no"
+
         elif answer == "canceled":
-            SQlite.del_information_about_server(id_, False)
+            await del_information_about_server(telegram_id, False, pool)
             return "❌Оплата устарела и/или была отменена!❌", keyboard.back_to_my_profile.as_markup(), is_pay, "no"
+
         else:
             return description.error, keyboard.back_to_my_profile.as_markup(), is_pay, "no"
+
     except Exception:
         return description.error, keyboard.back_to_my_profile.as_markup(), is_pay, "no"

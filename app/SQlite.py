@@ -1,59 +1,60 @@
+#sqlite.py
 import sqlite3
 import os
 from aiogram.utils.markdown import hbold
 
 #Создание БД (если БД нет)
-def check_table():
-    try:
-        connection = sqlite3.connect('my_database.db')
-        cursor = connection.cursor()
-        # Создаем таблицу users
-        cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY,
-        telegram_id INTEGER,
-        username TEXT,
-        money INTEGER,
-        oblaka INTEGER,
-        purchases INTEGER,
-        admin INTEGER,
-        discount INTEGER,
-        referal INTEGER,
-        server TEXT,
-        price REAL,
-        use_discount TEXT,
-        inviting_user TEXT,
-        user_invited TEXT,
-        pay_id INTEGER,
-        url_pay TEXT
-        )
-        ''')
-        # Сохраняем изменения и закрываем соединение
-        connection.commit()
-        connection.close()
-    except:
-        print("Database: FAIL")
+# def check_table():
+#     try:
+#         connection = sqlite3.connect('my_database.db')
+#         cursor = connection.cursor()
+#         # Создаем таблицу users
+#         cursor.execute('''
+#         CREATE TABLE IF NOT EXISTS users (
+#         id INTEGER PRIMARY KEY,
+#         telegram_id INTEGER,
+#         username TEXT,
+#         money INTEGER,
+#         oblaka INTEGER,
+#         purchases INTEGER,
+#         admin INTEGER,
+#         discount INTEGER,
+#         referal INTEGER,
+#         server TEXT,
+#         price REAL,
+#         use_discount TEXT,
+#         inviting_user TEXT,
+#         user_invited TEXT,
+#         pay_id INTEGER,
+#         url_pay TEXT
+#         )
+#         ''')
+#         # Сохраняем изменения и закрываем соединение
+#         connection.commit()
+#         connection.close()
+#     except:
+#         print("Database: FAIL")
 
 # Добавление нового пользователя в БД. Или проверка, если уже существует
-def add_new_user(id, username):
-    connection = sqlite3.connect('my_database.db')
-    cursor = connection.cursor()
-    cursor.execute('''SELECT telegram_id FROM users''')
-    users = cursor.fetchall()
-    for user in users:
-        if id in user:
-            connection.commit()
-            connection.close()
-            return f"Привет {hbold(username)}! Давно не виделись!"
-    if str(id) in os.getenv("ADMIN_IDS"): admin = 1
-    else: admin = 0
-    cursor.execute('''INSERT INTO users (telegram_id, username, money, oblaka, purchases, admin, discount, 
-        referal, server, price, use_discount, inviting_user, user_invited, pay_id, url_pay) 
-        VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);''',
-        (id, username, 0, 1, 0, admin, 0, 0, "no", 0, "no", "no", "no", 0, "no"))
-    connection.commit()
-    connection.close()
-    return f"Привет {hbold(username)}! Приятно познакомиться!"
+# def add_new_user(id, username):
+#     connection = sqlite3.connect('my_database.db')
+#     cursor = connection.cursor()
+#     cursor.execute('''SELECT telegram_id FROM users''')
+#     users = cursor.fetchall()
+#     for user in users:
+#         if id in user:
+#             connection.commit()
+#             connection.close()
+#             return f"Привет {hbold(username)}! Давно не виделись!"
+#     if str(id) in os.getenv("ADMIN_IDS"): admin = 1
+#     else: admin = 0
+#     cursor.execute('''INSERT INTO users (telegram_id, username, money, oblaka, purchases, admin, discount,
+#         referal, server, price, use_discount, inviting_user, user_invited, pay_id, url_pay)
+#         VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);''',
+#         (id, username, 0, 1, 0, admin, 0, 0, "no", 0, "no", "no", "no", 0, "no"))
+#     connection.commit()
+#     connection.close()
+#     return f"Привет {hbold(username)}! Приятно познакомиться!"
 
 # Информация о пользователе, по ID
 def user_info(id):

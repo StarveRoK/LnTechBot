@@ -1,53 +1,56 @@
-from app import SQlite, text, description, keyboard, referal, pay
+# app/calculation.py
 from aiogram.utils.markdown import hbold
+from app import text as text_module, description, keyboard
+from app import referal as referal_module
+from app import pay as pay_module
+from pgsql.database import user_info, del_information_about_server, server_choosing
 
-"""------------------------------<<<ФУНКЦИИ ДЛЯ РАСЧЕТА>>>------------------------------"""
 
-
-# Подробная информация о сервере
-def information_about_server(choose, id_):
+def information_about_server(choose: str, telegram_id: int, pool=None):
+    """
+    Возвращает (text, reply_markup) для выбранного сервера.
+    При choose == 'back_to_choose' — сбрасывает выбор (синхронная версия не нужна, см. ниже).
+    """
     if choose == "back_to_choose":
-        tex = description.set_1
-        reply_markup = keyboard.servers.as_markup()
-        SQlite.del_information_about_server(id_, False)
-        return tex, reply_markup
-    buy_serv = text.buy_server(choose)
-    tex = text.text(choose, buy_serv)
+        return description.set_1, keyboard.servers.as_markup()
+
+    buy_serv = text_module.buy_server(choose)
+    tex = text_module.text(choose, buy_serv)
     reply_markup = keyboard.inline_keyboard_in_choose(choose, buy_serv)
     return tex, reply_markup
 
 
-# Сбор информации о выбранном сервере
-# Определение окончательной цены сервера (есть ли скидки или нет)
-# Создание ссылки на оплату
-# При нажатии "назад" все данные о выбранном сервере удаляются
-def buy_or_back(data, id_):
+async def buy_or_back(data: str, telegram_id: int, pool):
+    """Обрабатывает нажатие «Купить» или «Назад»."""
+    if data == "back_to_choosing_server":
+        await del_information_about_server(telegram_id, False, pool)
+        return description.set_1, keyboard.servers.as_markup()
 
-    if data == "back_to_choosing_server":  # Если пользователь нажмет "назад"
-        txt = description.set_1
-        reply_markup = keyboard.servers.as_markup()
-        SQlite.del_information_about_server(id_, False)
-        return txt, reply_markup
+    server_choose = data.replace("buy_", "")
+    user_data = await user_info(telegram_id, pool)
+    price = int((description.servers.get(server_choose))[3])
+    use_discount = "no"
 
-    server_choose, discount = data.replace("buy_", ""), "no"  # Определение переменных
-    user_info = SQlite.user_info(id_)  # Определение пользователя в бд
-    price = int((description.servers.get(server_choose))[3])  # Получение цены выбранного сервера
-    referal.check_referal_discount(id_, False)  # Проверка на наличие реферальной скидки
+    await referal_module.check_referal_discount(telegram_id, False, pool)
 
-    if int(user_info[7]) > 0 or int(user_info[8]) > 0:  # Определение наличия скидки и какая из них больше
-        discount = max(int(user_info[7]), int(user_info[8]))
-        price = price - (price * (discount/100))
-        if int(user_info[7]) > int(user_info[8]):
-            discount = "dis"
-        else:
-            discount = "ref"
+    # Пересчитываем user_data после проверки реферала
+    user_data = await user_info(telegram_id, pool)
+    discount_val = int(user_data.get("discount") or 0)
+    referal_val = int(user_data.get("referal") or 0)
 
-    txt = text.text(server_choose, "")  # Создание текста
-    pay_id, url = pay.pay(price, text.text_to_p2pkassa(server_choose))  # Создание ссылки на оплату
-    SQlite.server_choosing(discount, price, server_choose, id_, pay_id, url)  # Заполнение бд выбранным сервером
+    if discount_val > 0 or referal_val > 0:
+        best = max(discount_val, referal_val)
+        price = price - (price * (best / 100))
+        use_discount = "dis" if discount_val >= referal_val else "ref"
+
+    pay_id, url = pay_module.create_payment(price, text_module.text_to_p2pkassa(server_choose))
 
     if url == "error":
-        return description.error, keyboard.back_to_my_profile.as_markup()  # Если оплата не создана
-    txt = f"Вы выбрали: \n{txt}\n\nОкончательная цена: {hbold(str(price))}Р"  # Создание текста сообщения
-    reply_markup = keyboard.buy_from_p2pkassa(url)  # Определение inline кнопок
+        return description.error, keyboard.back_to_my_profile.as_markup()
+
+    await server_choosing(use_discount, price, server_choose, telegram_id, pay_id, url, pool)
+
+    txt = text_module.text(server_choose, "")
+    txt = f"Вы выбрали:\n{txt}\n\nОкончательная цена: {hbold(str(int(price)))}Р"
+    reply_markup = keyboard.buy_from_p2pkassa(url)
     return txt, reply_markup
