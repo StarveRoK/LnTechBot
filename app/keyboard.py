@@ -59,7 +59,7 @@ for server in description.servers:
     buy_.append("buy_"+server)
     if server == "check_kassa":
         continue
-    servers.button(text=f"{s_d.get(server)[0]} {s_d.get(server)[1]} Ядра (2.5-4.0 GHz) | {s_d.get(server)[2]} "
+    servers.button(text=f"{s_d.get(server)[0]} {s_d.get(server)[1]} Ядра | {s_d.get(server)[2]} "
                         f"озу | 128 ssd | {s_d.get(server)[3]}P", callback_data=server)
 servers.adjust(1)
 
