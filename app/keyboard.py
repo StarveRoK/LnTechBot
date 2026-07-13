@@ -33,8 +33,10 @@ builder.adjust(1, 3, 1)
 builder.as_markup()
 
 technical_support = InlineKeyboardBuilder()
-technical_support.button(text="Тех.поддержка (Максим)", url="https://t.me/LnTechnologies")
-technical_support.button(text="Разработчик (Алексей)", url="https://t.me/StarveR")
+technical_support.button(text="Тех.поддержка Ульяна", url="https://t.me/ingcod")
+technical_support.button(text="Тех.поддержка Саид", url="https://t.me/ln_tech_support")
+# technical_support.button(text="Тех.поддержка (Максим)", url="https://t.me/LnTechnologies")
+# technical_support.button(text="Разработчик (Алексей)", url="https://t.me/StarveR")
 technical_support.adjust(1)
 
 my_profile = InlineKeyboardBuilder()
