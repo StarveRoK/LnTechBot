@@ -4,6 +4,7 @@ from aiogram.utils.markdown import hbold
 from psycopg_pool import AsyncConnectionPool
 
 from config import DATABASE_URL, ADMIN_IDS
+from logs import log
 
 
 # ─────────────────────────── helpers ────────────────────────────
@@ -41,11 +42,11 @@ class AsyncDatabaseManager:
         try:
             await self.pool.open()
         except Exception as e:
-            print(f"Ошибка при открытии пула соединений: {e}")
+            log.error(f"Ошибка при открытии пула соединений: {e}")
 
     async def close_pool(self):
         await self.pool.close()
-        print("Пул соединений закрыт")
+        log.info("Пул соединений закрыт")
 
 
 # ─────────────────────────── users ───────────────────────────────
@@ -71,6 +72,7 @@ async def add_new_user(telegram_id: int, username: str, pool) -> str:
                     inviting_user, user_invited, pay_id, url_pay
                 )
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                ON CONFLICT (telegram_id) DO NOTHING
                 """,
                 (telegram_id, username, 0, 1, 0, admin,
                  0, 0, "no", 0, "no", "no", "no", "0", "no"),
@@ -100,13 +102,13 @@ async def all_users(pool) -> list[dict]:
 
 # ─────────────────────────── обновления ──────────────────────────
 
-async def add_discount_oblaka(telegram_id: int, pool) -> None:
-    """Списывает купон OBLAKA и выдаёт скидку 20%."""
+async def add_discount_oblaka(telegram_id: int, percent: int, pool) -> None:
+    """Списывает купон OBLAKA и выдаёт скидку (процент из app_settings, см. pgsql/catalog.py)."""
     async with pool.connection() as conn:
         async with conn.cursor() as cursor:
             await cursor.execute(
-                "UPDATE users SET oblaka = 0, discount = 20 WHERE telegram_id = %s",
-                (telegram_id,),
+                "UPDATE users SET oblaka = 0, discount = %s WHERE telegram_id = %s",
+                (percent, telegram_id),
             )
         await conn.commit()
 
@@ -156,13 +158,13 @@ async def add_referal_to_user(inviting_user_raw: str, telegram_id: int, pool) ->
     return f"Вы успешно активировали реферальный код! (rf{inviting_user})"
 
 
-async def add_referal_discount(telegram_id: int, pool) -> None:
-    """Устанавливает реферальную скидку 10%."""
+async def add_referal_discount(telegram_id: int, percent: int, pool) -> None:
+    """Устанавливает реферальную скидку (процент из app_settings, см. pgsql/catalog.py)."""
     async with pool.connection() as conn:
         async with conn.cursor() as cursor:
             await cursor.execute(
-                "UPDATE users SET referal = 10 WHERE telegram_id = %s",
-                (telegram_id,),
+                "UPDATE users SET referal = %s WHERE telegram_id = %s",
+                (percent, telegram_id),
             )
         await conn.commit()
 

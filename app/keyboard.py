@@ -53,17 +53,41 @@ input_referal.button(text="Вернуться", callback_data="back_to_my_profil
 input_referal.adjust(1)
 
 servers = InlineKeyboardBuilder()
+# "back_to_choosing_server"/"back_to_choose" — служебные callback_data, не привязаны к тарифам.
 buy_ = ["back_to_choosing_server"]
 key_server_description = ["back_to_choose"]
-s_d = description.servers
-for server in description.servers:
-    key_server_description.append(server)
-    buy_.append("buy_"+server)
-    if server == "check_kassa":
-        continue
-    servers.button(text=f"{s_d.get(server)[0]} {s_d.get(server)[1]} Ядра | {s_d.get(server)[2]} "
-                        f"озу | 128 ssd | {s_d.get(server)[3]}P", callback_data=server)
-servers.adjust(1)
+
+
+def build_server_buttons() -> None:
+    """
+    Строит клавиатуру серверов и списки допустимых callback_data по тарифам,
+    загруженным из Postgres (description.servers, см. main.py при старте).
+
+    ВАЖНО: main.py регистрирует `@dp.callback_query(F.data.in_(keyboard.buy_))` и
+    `F.data.in_(keyboard.key_server_description))` на этапе импорта — то есть ДО того,
+    как эта функция вызывается при старте бота. aiogram/magic_filter захватывает сам
+    объект списка по ссылке в момент декорирования, а не его содержимое. Поэтому здесь
+    списки дополняются на месте (.clear()/.append()), а НЕ пересоздаются — иначе уже
+    зарегистрированные фильтры будут смотреть на старый пустой список и не сработают.
+    """
+    global servers
+
+    servers = InlineKeyboardBuilder()
+
+    del buy_[1:]
+    del key_server_description[1:]
+
+    for code, s in description.servers.items():
+        key_server_description.append(code)
+        buy_.append("buy_" + code)
+        if not s["is_visible"]:
+            continue
+        servers.button(
+            text=f"{s['flag']} {s['cores']} Ядра | {s['ram_gb']} "
+                 f"озу | {s['ssd_gb']} ssd | {int(s['price'])}P",
+            callback_data=code,
+        )
+    servers.adjust(1)
 
 admin_panel = InlineKeyboardBuilder()
 admin_panel.button(text="Вывести базу данных в чат", callback_data="db_to_chat")

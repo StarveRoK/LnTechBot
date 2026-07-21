@@ -1,33 +1,36 @@
 # text.py
-from app import description, keyboard
+from app import description
 
 
 # Текст для подробного описания сервера
 def text(choose, string_):
+    s = description.servers[choose]
     answer = string_ + \
-             f"\nЦена: {description.servers.get(choose)[3]}р\n\n" \
+             f"\nЦена: {int(s['price'])}р\n\n" \
              f"ОС: Windows (по запросу любую ОС)\n" \
-             f"Ядра: {description.servers.get(choose)[1]} Ядра\n" \
-             f"ОЗУ: {description.servers.get(choose)[2]} ГБ\n" \
+             f"Ядра: {s['cores']} Ядра\n" \
+             f"ОЗУ: {s['ram_gb']} ГБ\n" \
              f"Интернет: 1 Гб/с\n" \
-             f"SSD: 128 Гб\n" \
-             f"Локация: {description.servers.get(choose)[0]}"
+             f"SSD: {s['ssd_gb']} Гб\n" \
+             f"Локация: {s['flag']}"
     return answer
 
 
 # Текст для подробного описания сервера на сайте p2p
 def text_to_p2pkassa(choose):
+    s = description.servers[choose]
     answer = f"ОС: Windows; " \
-             f"Ядер: {description.servers.get(choose)[1]} (Ядра); \n" \
-             f"ОЗУ: {description.servers.get(choose)[2]} ГБ; \n" \
+             f"Ядер: {s['cores']} (Ядра); \n" \
+             f"ОЗУ: {s['ram_gb']} ГБ; \n" \
              f"Интернет: 1 Гб/с; \n" \
-             f"SSD: 128 Гб; \n" \
-             f"Локация: {description.location.get(description.servers.get(choose)[0])}"
+             f"SSD: {s['ssd_gb']} Гб; \n" \
+             f"Локация: {description.location.get(s['flag'])}"
     return answer
 
 
 # Текст для краткого описания сервера
 def buy_server(choose):
-    answer = f"{keyboard.s_d.get(choose)[0]}{keyboard.s_d.get(choose)[1]} Ядра | " \
-             f"{keyboard.s_d.get(choose)[2]} озу | 128 ssd | {keyboard.s_d.get(choose)[3]}P"
+    s = description.servers[choose]
+    answer = f"{s['flag']}{s['cores']} Ядра | " \
+             f"{s['ram_gb']} озу | {s['ssd_gb']} ssd | {int(s['price'])}P"
     return answer

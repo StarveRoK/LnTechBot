@@ -6,3 +6,5 @@ pydantic==2.12.5
 pydantic_core==2.41.5
 psycopg-pool~=3.3.0
 aiohttp-socks
+alembic~=1.13.0
+SQLAlchemy~=2.0.0

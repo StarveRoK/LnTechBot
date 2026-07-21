@@ -1,0 +1,16 @@
+[Unit]
+Description=LnTechBot - Telegram VDS/VPS sales bot
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=lntech-bot
+WorkingDirectory=/opt/lntech-bot
+EnvironmentFile=/opt/lntech-bot/.env
+ExecStart=/opt/lntech-bot/.venv/bin/python main.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

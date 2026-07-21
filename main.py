@@ -13,6 +13,7 @@ from aiogram.utils.markdown import hbold
 from config import ADMIN_IDS, MAX_ADMIN, TOKEN, PROXY
 from middleware import DatabaseMiddleware
 from pgsql.database import AsyncDatabaseManager, add_new_user
+from pgsql import catalog
 from logs import log
 from app import keyboard, description, pay, my_profile, admin, referal, oblaka, calculation
 
@@ -189,6 +190,14 @@ async def main():
         except Exception as e:
             log.error(f"❌ Failed to initialize database: {e}")
             return
+
+        # Тарифы, локации и проценты скидок теперь живут в Postgres (см. pgsql/catalog.py)
+        # вместо хардкода в app/description.py. Загружаются один раз при старте.
+        description.servers = await catalog.load_tariffs(database_manager.pool)
+        description.location = await catalog.load_locations(database_manager.pool)
+        catalog.APP_SETTINGS.update(await catalog.load_app_settings(database_manager.pool))
+        keyboard.build_server_buttons()
+        log.info(f"✅ Catalog loaded: {len(description.servers)} tariffs")
 
         await dp.start_polling(bot)
 

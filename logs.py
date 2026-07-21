@@ -12,6 +12,10 @@ from aiogram.client.session import aiohttp
 from config import PRODUCTION, ADMIN_TOKEN
 from zoneinfo import ZoneInfo
 
+# Префикс, чтобы на сайте разработчика отличать алерты этого бота от других проектов,
+# использующих тот же tg-send эндпоинт.
+NOTIFY_PREFIX = "[LnTechBot]"
+
 
 class LogLevel(str, Enum):
     """Уровни логирования"""
@@ -206,55 +210,30 @@ class Logger:
         }
 
         data = {
-            'text': text
+            'text': f"{NOTIFY_PREFIX} {text}"
         }
 
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.post(url, headers=headers, json=data, timeout=10) as response:
-                    data = await response.json()
+                    response_data = await response.json()
 
                     if response.status != 200:
-                        log.error(
-                            f"не удалось получить логи проекта: "
-                            f"{response.status} - {data.get('detail', 'Неизвестная ошибка')}"
+                        # self._logger напрямую, а не log.error(): иначе неуспешная отправка
+                        # сама рекурсивно планирует ещё одну отправку на каждый вызов.
+                        self._logger.error(
+                            f"не удалось отправить разработчику сообщение: "
+                            f"{response.status} - {response_data.get('detail', 'Неизвестная ошибка')}"
                         )
-                        return None
                     return None
 
         except asyncio.TimeoutError:
-            log.warning(f"Таймаут при отправке в чат разработчику")
+            self._logger.warning("Таймаут при отправке в чат разработчику")
             return None
 
         except Exception as e:
-            log.warning(f"Ошибка сети при отправке в чат разработчику: {e}")
+            self._logger.warning(f"Ошибка сети при отправке в чат разработчику: {e}")
             return None
-        # url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-        #
-        # payload = {
-        #     "chat_id": '472863495',
-        #     "text": text,
-        #     "parse_mode": 'HTML',
-        # }
-        #
-        # try:
-        #     async with aiohttp.ClientSession() as session:
-        #         async with session.post(url, json=payload, timeout=10) as response:
-        #             if response.status != 200:
-        #                 error_data = await response.json()
-        #                 self.warning(
-        #                     f"Ошибка отправки в чат разработчику: "
-        #                     f"{response.status} - {error_data.get('description', 'Неизвестная ошибка')}"
-        #                 )
-        #                 return False
-        #
-        # except asyncio.TimeoutError:
-        #     self.warning(f"Таймаут при отправке в чат разработчику")
-        #     return False
-        #
-        # except Exception as e:
-        #     self.warning(f"Ошибка сети при отправке в чат разработчику: {e}")
-        #     return False
 
     def debug(self, message: str, **kwargs):
         """Логирование на уровне DEBUG"""
@@ -309,4 +288,4 @@ class Logger:
         return ""
 
 
-log = Logger(name="FastAPI", log_dir="app")
+log = Logger(name="LnTechBot", log_dir="app")

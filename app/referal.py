@@ -1,5 +1,6 @@
 # app/referal.py
 from app import description
+from pgsql import catalog
 from pgsql.database import (
     all_users,
     user_info,
@@ -41,7 +42,7 @@ async def check_referal_discount(telegram_id: int, is_pay: bool, pool) -> None:
             and (member.get("purchases") or 0) > 0
             and str(member["telegram_id"]) not in already_used
         ):
-            await add_referal_discount(telegram_id, pool)
+            await add_referal_discount(telegram_id, catalog.APP_SETTINGS["referal_discount_percent"], pool)
             if is_pay:
                 prev = member.get("user_invited", "no")
                 user_invite = f"{str(member['telegram_id'])}_" if prev == "no" else f"{prev}{str(member['telegram_id'])}_"

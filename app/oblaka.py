@@ -1,5 +1,6 @@
 # app/oblaka.py
 from app import description
+from pgsql import catalog
 from pgsql.database import add_new_user, user_info, add_discount_oblaka
 
 
@@ -15,7 +16,7 @@ async def oblaka(telegram_id: int, name: str, pool) -> str:
         return description.error
 
     if int(user["oblaka"]) == 1:
-        await add_discount_oblaka(telegram_id, pool)
+        await add_discount_oblaka(telegram_id, catalog.APP_SETTINGS["oblaka_discount_percent"], pool)
         return description.activate_coupon_string
     elif int(user["oblaka"]) == 0:
         return description.user_have_no_coupon

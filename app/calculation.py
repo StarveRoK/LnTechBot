@@ -28,7 +28,7 @@ async def buy_or_back(data: str, telegram_id: int, pool):
 
     server_choose = data.replace("buy_", "")
     user_data = await user_info(telegram_id, pool)
-    price = int((description.servers.get(server_choose))[3])
+    price = int(description.servers[server_choose]["price"])
     use_discount = "no"
 
     await referal_module.check_referal_discount(telegram_id, False, pool)
